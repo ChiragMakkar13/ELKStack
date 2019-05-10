@@ -2,10 +2,14 @@ version: '3'
 
 services:
   app:
-    image: docker-logs-elk/springbootwebapp
+    image: chiragmakkar13/springbootwebapp
     build:
       context: springbootwebapp
       dockerfile: Dockerfile
+    depends_on:
+      - logstash
+    environment:
+       - cluster.name=springboot
     ports:
       - 8888:8888
   filebeat:
@@ -21,39 +25,31 @@ services:
      - "/var/run/docker.sock:/var/run/docker.sock"
     links:
        - logstash
-  kibana:
-    image: kibana:7.0.0
-    environment:
-      - "LOGGING_QUIET=true"
-    links:
+  logstash:
+    hostname: logstash
+    build: ./logstash
+    depends_on:
       - elasticsearch
     ports:
-      - 5601:5601
-  logstash: 
-    hostname: logstash 
-    image: docker-logs-elk/logstash:1.0.0
-    build:
-      context: logstash
-      dockerfile: Dockerfile
-    ports:
-      - 5044:5044
-    environment:
-      LOG_LEVEL: error
-    links:
-      - elasticsearch
+      - 5140:5140
   elasticsearch:
     hostname: elasticsearch
-    image: docker-logs-elk/elasticsearch:1.0.0
-    build:
-      context: elasticsearch
-      dockerfile: Dockerfile
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.2.2
     environment:
-      - cluster.name=docker-logs-elk-cluster
+      - cluster.name=docker-cluster
       - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
     ulimits:
       memlock:
         soft: -1
         hard: -1
     ports:
       - 9200:9200
+  kibana:
+    build: ./kibana
+    depends_on:
+      - elasticsearch
+    ports:
+      - 5601:5601
+      
